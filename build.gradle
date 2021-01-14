@@ -1,91 +1,69 @@
-buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven {
-            name = "sonatype"
-            url = "https://oss.sonatype.org/content/repositories/snapshots/"
-        }
-        maven {
-            name = "forge"
-            url = "http://files.minecraftforge.net/maven"
-        }
-        maven {
-            name = 'sponge'
-            url = 'http://repo.spongepowered.org/maven'
-        }
-        jcenter()
-    }
-    dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
-        classpath 'org.spongepowered:mixingradle:0.6-SNAPSHOT'
+plugins {
+    id 'fabric-loom' version '0.5-SNAPSHOT'
+    id 'maven-publish'
+}
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+archivesBaseName = project.name
+version = project.version
+group = project.group
+
+repositories {
+    maven {
+        url 'https://dl.bintray.com/earthcomputer/mods'
     }
 }
 
-apply plugin: 'java'
+dependencies {
+    minecraft "com.mojang:minecraft:${project.mcVersion}"
+    mappings minecraft.officialMojangMappings()
+    modCompile "net.fabricmc:fabric-loader:${project.loaderVersion}"
 
-version = "v1.2"
-group = "Carpet Team"
-archivesBaseName = "Carpet Client"
-
-apply plugin: 'net.minecraftforge.gradle.liteloader'
-apply plugin: 'org.spongepowered.mixin'
-
-minecraft {
-    version = "1.12.2"
-    mappings = "stable_39"
-    runDir = "run"
-    makeObfSourceJar = false
-    replace '@VERSION@', project.version
+    modImplementation 'net.earthcomputer:multiconnect:1.3.34:api'
+    include 'net.earthcomputer:multiconnect:1.3.34:api'
 }
 
-libsDirName = "../libs"
+processResources {
+    inputs.property "version", project.version
 
-litemod {
-    json {
-        name = "Carpet Client"
-        displayName = "Carpet Client"
-        author = "Carpet Team"
-        mcversion = "1.12.2"
-        description = "Carpet Client for Carpet Server"
-        mixinConfigs += "mixins.carpetclient.json"
-        mixinConfigs += "mixins.carpetclient.optifinecompat.json"
-        version = project.version
+    from(sourceSets.main.resources.srcDirs) {
+        include "fabric.mod.json"
+        expand "version": project.version
     }
+
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "fabric.mod.json"
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = "sources"
+    from sourceSets.main.allSource
 }
 
 jar {
-    from litemod.outputs
-    baseName = archivesBaseName
-    classifier = null
+    from "LICENSE.md"
 }
 
-sourceSets {
-    main {
-        ext.refMap = "mixins.carpetclient.refmap.json"
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact(jar) {
+                builtBy remapJar
+            }
+            artifact(sourcesJar) {
+                builtBy remapSourcesJar
+            }
+        }
     }
-}
 
-mixin {
-    // liteloader does not do runtime deobfuscation, so in production we use "notch names", mixin needs to know this
-    defaultObfuscationEnv notch
-}
-
-/*dependencies {
-    compile 'net.minecraftforge:forgeflower:1.0.342-SNAPSHOT'
-}
-
-runClient {
-    systemProperty 'mixin.debug', 'true'
-}*/
-
-repositories {
-    maven { url = "http://repo.spongepowered.org/maven" }
-}
-dependencies {
-    compile 'org.jetbrains.java.decompiler:fernflower:sponge-SNAPSHOT'
-}
-runClient {
-    jvmArgs "-Dmixin.debug=true"
-//    jvmArgs "-Dmixin.debug.export=true"
+    repositories {
+        // mavenLocal()
+    }
 }
